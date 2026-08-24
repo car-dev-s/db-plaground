@@ -2,6 +2,12 @@ plugins {
     alias(libs.plugins.spring.boot)
 }
 
+configurations.all {
+    resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        selectHighestVersion()
+    }
+}
+
 dependencies {
     implementation platform(libs.spring.boot.dependencies)
     implementation 'org.springframework.boot:spring-boot-starter'
