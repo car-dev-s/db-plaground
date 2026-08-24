@@ -1,0 +1,17 @@
+plugins {
+    alias(libs.plugins.spring.boot)
+}
+
+dependencies {
+    implementation platform(libs.spring.boot.dependencies)
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation libs.flink.streaming.java
+    implementation libs.flink.clients
+    implementation libs.flink.connector.kafka
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation libs.cassandra.driver.core
+    implementation libs.mongodb.driver.sync
+
+    testImplementation platform(libs.spring.boot.dependencies)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

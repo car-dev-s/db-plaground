@@ -1,0 +1,15 @@
+playground:
+  flink:
+    https:
+      topic: playground.https-sessions
+      kafka:
+        bootstrap-servers: localhost:9092
+        group-id: playground-flink-sink
+      cassandra:
+        contact-point: localhost
+        port: 9042
+        local-datacenter: datacenter1
+        keyspace: playground
+      mongo:
+        uri: mongodb://localhost:27017
+        database: playground
