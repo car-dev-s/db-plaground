@@ -76,6 +76,37 @@ services:
       mc mb --ignore-existing local/warehouse;
       "
 
+  cassandra:
+    image: cassandra:5
+    container_name: playground-cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: playground
+    volumes:
+      - ${MOUNT_ROOT}/cassandra:/var/lib/cassandra
+
+  cassandra-init:
+    image: cassandra:5
+    container_name: playground-cassandra-init
+    volumes:
+      - ./cassandra/init.cql:/init.cql:ro
+    depends_on:
+      - cassandra
+    entrypoint: >
+      /bin/sh -c "
+      until cqlsh cassandra -e 'describe cluster'; do sleep 5; done;
+      cqlsh cassandra -f /init.cql;
+      "
+
+  mongodb:
+    image: mongo:7
+    container_name: playground-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ${MOUNT_ROOT}/mongodb:/data/db
+
   iceberg-rest:
     image: tabulario/iceberg-rest:1.6.0
     container_name: playground-iceberg-rest
