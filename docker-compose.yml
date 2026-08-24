@@ -16,7 +16,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     volumes:
-      - ${MOUNT_ROOT}/kafka:/var/lib/kafka/data
+      - ${MOUNT_ROOT:?error}/kafka:/var/lib/kafka/data
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
@@ -63,7 +63,7 @@ services:
       MINIO_ROOT_PASSWORD: password
     command: server /data --console-address ":9001"
     volumes:
-      - ${MOUNT_ROOT}/minio:/data
+      - ${MOUNT_ROOT:?error}/minio:/data
 
   minio-init:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
@@ -84,7 +84,7 @@ services:
     environment:
       CASSANDRA_CLUSTER_NAME: playground
     volumes:
-      - ${MOUNT_ROOT}/cassandra:/var/lib/cassandra
+      - ${MOUNT_ROOT:?error}/cassandra:/var/lib/cassandra
 
   cassandra-init:
     image: cassandra:5
@@ -105,7 +105,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ${MOUNT_ROOT}/mongodb:/data/db
+      - ${MOUNT_ROOT:?error}/mongodb:/data/db
 
   iceberg-rest:
     image: tabulario/iceberg-rest:1.6.0
