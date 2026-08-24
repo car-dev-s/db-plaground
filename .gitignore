@@ -48,6 +48,8 @@ bin/
 
 ### Generic ###
 docs/superpowers
+.env
+.env.local
 
 ### Logs ###
 log/
