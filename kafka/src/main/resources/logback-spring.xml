@@ -13,7 +13,7 @@
             <pattern>${FILE_LOG_PATTERN}</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>bootrun.log/bootrun.log.%i</fileNamePattern>
+            <fileNamePattern>../log/bootrun.log.%i</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>4</maxIndex>
         </rollingPolicy>

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("load-https-sessions")
+//@Profile("load-https-sessions")
 public class HttpsSessionLoadRunner implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(HttpsSessionLoadRunner.class);
