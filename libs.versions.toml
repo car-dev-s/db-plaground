@@ -4,12 +4,22 @@ junit = "6.0.0"
 springBoot = "4.1.1"
 testcontainers = "2.0.5"
 awaitility = "4.3.0"
+flink = "2.2.0"
+flinkConnectorKafka = "5.0.0-2.2"
+cassandraDriver = "4.17.0"
+mongodbDriver = "5.9.0"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
+flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-clients = { module = "org.apache.flink:flink-clients", version.ref = "flink" }
+flink-connector-kafka = { module = "org.apache.flink:flink-connector-kafka", version.ref = "flinkConnectorKafka" }
+flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
+cassandra-driver-core = { module = "com.datastax.oss:java-driver-core", version.ref = "cassandraDriver" }
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodbDriver" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }

@@ -379,11 +379,60 @@ curl http://localhost:8181/v1/namespaces/playground/tables/https_sessions
 # corresponding snapshot entry
 ```
 
+## 9. Cassandra + MongoDB (direct write via Flink, no Kafka Connect)
+
+Unlike the Iceberg path, Cassandra and MongoDB are **not** fed via Kafka Connect sink
+connectors — a Flink job in this repo's `flink` module consumes `playground.https-sessions`
+directly as a second, independent consumer group and writes to both stores through their raw
+Java drivers (`java-driver-core` for Cassandra, `mongodb-driver-sync` for MongoDB), inside custom
+Flink 2.x `sink2` API `Sink`/`SinkWriter` implementations. This avoids needing a
+`flink-connector-cassandra`/`flink-connector-mongodb`
+version compatible with this project's Flink/Spring Boot versions, and gives full control over
+how `Instant` timestamps map to each store's native datetime type.
+
+Both services are containerized (unlike `flink` itself, which runs locally):
+
+```yaml
+cassandra:
+  image: cassandra:5
+  ports: ["9042:9042"]
+  volumes:
+    - ${MOUNT_ROOT}/cassandra:/var/lib/cassandra
+
+mongodb:
+  image: mongo:7
+  ports: ["27017:27017"]
+  volumes:
+    - ${MOUNT_ROOT}/mongodb:/data/db
+```
+
+`MOUNT_ROOT` is defined once in the repo-root `.env` file (`MOUNT_ROOT=D:/work/docker/mount`) and
+referenced by every bind-mounted service, including the pre-existing `kafka` and `minio` mounts.
+
+Cassandra's keyspace/table are created by a one-shot `cassandra-init` container running
+`cassandra/init.cql` via `cqlsh` (same pattern as `minio-init`). MongoDB needs no init step — the
+database and collection are created implicitly on first insert.
+
+Run the sink job: `./gradlew :flink:bootRun` (see `docs/cassandra-tutorial.md` and
+`docs/mongodb-tutorial.md` for the data model and operational commands).
+
+Query all three stores — Iceberg, Cassandra, MongoDB — from one place via Trino, which has a
+catalog file per store (`trino/catalog/{iceberg,cassandra,mongodb}.properties`):
+
+```sql
+SELECT * FROM iceberg.playground.https_sessions LIMIT 10;
+SELECT * FROM cassandra.playground.https_sessions LIMIT 10;
+SELECT * FROM mongodb.playground.https_sessions LIMIT 10;
+```
+
 ## Full checklist, start to finish
 
 1. `docker compose build kafka-connect`
-2. `docker compose up -d` → `kafka-connect-init` creates the namespace and registers the connector automatically
+2. `docker compose up -d` → `kafka-connect-init` creates the namespace and registers the connector automatically; `cassandra-init` creates the `playground` keyspace and `https_sessions` table
 3. `curl http://localhost:8083/connector-plugins | grep -i iceberg` → confirms plugin loaded
 4. `curl http://localhost:8083/connectors/https-sessions-iceberg-sink/status` → wait for `RUNNING` on connector *and* task
 5. Run the producer (`load-https-sessions` profile)
-6. `docker compose exec trino trino` → `SELECT count(*) FROM iceberg.playground.https_sessions;`
+6. `./gradlew :flink:bootRun` → starts the Cassandra + MongoDB sink job (runs locally, not containerized)
+7. `docker compose exec trino trino` → `SELECT count(*) FROM iceberg.playground.https_sessions;`,
+   `SELECT count(*) FROM cassandra.playground.https_sessions;`,
+   `SELECT count(*) FROM mongodb.playground.https_sessions;`
