@@ -14,6 +14,7 @@ dependencies {
     implementation libs.flink.streaming.java
     implementation libs.flink.clients
     implementation libs.flink.connector.kafka
+    implementation libs.flink.connector.base
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation libs.cassandra.driver.core
     implementation libs.mongodb.driver.sync
