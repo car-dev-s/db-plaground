@@ -15,6 +15,8 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - ${MOUNT_ROOT}/kafka:/var/lib/kafka/data
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
@@ -61,7 +63,7 @@ services:
       MINIO_ROOT_PASSWORD: password
     command: server /data --console-address ":9001"
     volumes:
-      - minio-data:/data
+      - ${MOUNT_ROOT}/minio:/data
 
   minio-init:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
