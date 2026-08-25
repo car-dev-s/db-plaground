@@ -428,6 +428,62 @@ SELECT * FROM cassandra.playground.https_sessions LIMIT 10;
 SELECT * FROM mongodb.playground.https_sessions LIMIT 10;
 ```
 
+## 10. DynamoDB (isolated Kafka Streams module, no Kafka Connect)
+
+A third, fully independent downstream consumer of `playground.https-sessions` lives in
+the `dynamo` module. Unlike `kafka` and `flink`, it uses **Kafka Streams** (not
+`spring-kafka`'s `@KafkaListener` or the Flink `sink2` API) and shares no code with
+either module — the event POJO is deliberately duplicated to keep this module a
+standalone deployable.
+
+Each event triggers two independent DynamoDB writes:
+
+- `https_session_aggregates` — `UpdateItem` upsert keyed by `sourceIp`, maintaining
+  running counters (`eventCount`, `totalBytesSent`, `totalBytesReceived`) and
+  last-seen fields.
+- `https_session_events` — `PutItem` whole-item write keyed by `sourceIp` +
+  `timestampIso`, a raw per-event log.
+
+A failure writing to one table does not prevent the attempt on the other; if either
+fails after the AWS SDK's built-in retries are exhausted, the stream thread fails and
+Kafka Streams restarts it (no DLQ in this version — see
+`docs/superpowers/specs/2026-08-25-dynamo-kafka-streams-module-design.md` for the full
+design rationale, including the non-idempotency caveat on the aggregate counters under
+Kafka's at-least-once redelivery).
+
+```yaml
+dynamodb-local:
+  image: amazon/dynamodb-local:2.5.2
+  ports: ["8000:8000"]
+  command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+  volumes:
+    - ${MOUNT_ROOT:?error}/dynamodb:/data
+```
+
+Tables are created by a one-shot `dynamodb-local-init` container running `aws dynamodb
+create-table` (same pattern as `cassandra-init`/`minio-init`) — see
+`docker-compose.yml` for the exact commands.
+
+### Gotcha: Kafka Streams shuts down entirely if the source topic doesn't exist yet
+
+Unlike a plain Kafka consumer, Kafka Streams treats a missing source topic during
+rebalance as fatal: it throws `MissingSourceTopicException` and, by default, the
+registered exception handler shuts the whole client down (`SHUTDOWN_CLIENT`) rather
+than retrying. If `playground.https-sessions` hasn't been created yet (e.g. nothing
+has produced to it), starting the `dynamo` module first will fail this way. Run the
+`kafka` producer at least once first (or otherwise ensure the topic exists) before
+starting `dynamo`.
+
+Run the module: `./gradlew :dynamo:bootRun` (runs locally, not containerized, same as
+`flink`). Verify data landed:
+
+```bash
+docker compose exec dynamodb-local-init aws dynamodb scan \
+  --endpoint-url http://dynamodb-local:8000 --table-name https_session_aggregates
+docker compose exec dynamodb-local-init aws dynamodb scan \
+  --endpoint-url http://dynamodb-local:8000 --table-name https_session_events
+```
+
 ## Full checklist, start to finish
 
 1. `docker compose build kafka-connect`
@@ -436,6 +492,7 @@ SELECT * FROM mongodb.playground.https_sessions LIMIT 10;
 4. `curl http://localhost:8083/connectors/https-sessions-iceberg-sink/status` → wait for `RUNNING` on connector *and* task
 5. Run the producer: `./gradlew :kafka:bootRun`
 6. `./gradlew :flink:bootRun` → starts the Cassandra + MongoDB sink job (runs locally, not containerized)
+6a. `./gradlew :dynamo:bootRun` → starts the isolated Kafka Streams DynamoDB sink module (runs locally, not containerized; run step 5 first so the topic exists)
 7. `docker compose exec trino trino` → `SELECT count(*) FROM iceberg.playground.https_sessions;`,
    `SELECT count(*) FROM cassandra.playground.https_sessions;`,
    `SELECT count(*) FROM mongodb.playground.https_sessions;`
