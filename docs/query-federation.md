@@ -4,6 +4,12 @@
 actually doing when you write a join across `iceberg`, `cassandra`, and `mongodb` — and why the
 same query can be instant or catastrophic depending on which side of the join a predicate lands.
 
+**DynamoDB is not part of this article, on purpose.** Trino has no built-in DynamoDB connector, so
+the fourth store in this pipeline (see `docs/dynamodb-tutorial.md`) is simply absent from the
+federation surface — none of the pushdown/join-order reasoning below applies to it, because there
+is no query path into it from Trino at all. See `docs/dynamodb-tutorial.md` §5 for what a real
+export path would require.
+
 ## 1. Trino does not push joins down. Ever.
 
 The mental model that matters:

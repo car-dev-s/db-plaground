@@ -166,11 +166,16 @@ Timestamps are the vivid example, but identity diverges just as much:
 | Cassandra | `(source_ip, timestamp)` — derived from the data | upsert: silently replaces |
 | MongoDB | generated `ObjectId` — derived from the *write* | append: accumulates duplicates |
 | Iceberg | none; append-only files | append: accumulates duplicates |
+| DynamoDB `https_session_events` | `(sourceIp, timestampIso)` — derived from the data | replace: silently overwrites, same shape as Cassandra |
+| DynamoDB `https_session_aggregates` | `sourceIp` — derived from the data | **merges**: `SET` fields idempotent, `ADD` counters double-count — see `docs/dynamodb-tutorial.md` §2 |
 
-Only Cassandra has a data-derived key, which is why only Cassandra converges under replay. The
-MongoDB `_id` is generated per `insertOne` call — visible in the sample output above as
-`ObjectId('6a8c40753e030c5f845dffab')` — so it carries no information about the session at all.
-`docs/delivery-semantics.md` §5 has the deterministic-`_id` fix.
+Cassandra and the DynamoDB event table both have a data-derived key, which is why both converge
+(in the identity sense) under replay. The MongoDB `_id` is generated per `insertOne` call —
+visible in the sample output above as `ObjectId('6a8c40753e030c5f845dffab')` — so it carries no
+information about the session at all. `docs/delivery-semantics.md` §5 has the deterministic-`_id`
+fix. The DynamoDB aggregate table is the odd one out: a data-derived key *and* still not safe under
+replay, because the non-idempotence lives in the `ADD` operation, not the key — a reminder that key
+design and operation design are two separate decisions that both have to be gotten right.
 
 Iceberg's append-only model is not a deficiency; it is what makes its snapshot isolation and time
 travel work. Deduplication in that world is a query-time or compaction-time concern

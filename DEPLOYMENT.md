@@ -446,10 +446,10 @@ Each event triggers two independent DynamoDB writes:
 
 A failure writing to one table does not prevent the attempt on the other; if either
 fails after the AWS SDK's built-in retries are exhausted, the stream thread fails and
-Kafka Streams restarts it (no DLQ in this version — see
-`docs/superpowers/specs/2026-08-25-dynamo-kafka-streams-module-design.md` for the full
-design rationale, including the non-idempotency caveat on the aggregate counters under
-Kafka's at-least-once redelivery).
+Kafka Streams restarts it (no DLQ in this version — see `docs/delivery-semantics.md`
+§10 for the full design rationale, including the non-idempotency caveat on the
+aggregate counters under Kafka's at-least-once redelivery, and
+`docs/dynamodb-tutorial.md` for the data model in depth).
 
 ```yaml
 dynamodb-local:

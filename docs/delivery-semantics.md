@@ -1,27 +1,28 @@
 # Delivery Semantics & Failure Modes (for this project)
 
-One Kafka topic fans out into three stores over **two completely independent consumers** — a
-Flink job (Cassandra + MongoDB) and a Kafka Connect worker (Iceberg). They do not share offsets,
-transactions, or failure handling. This article is about what each one actually guarantees when
-something crashes, and why the three stores can legitimately disagree afterwards.
+One Kafka topic fans out into four stores over **three completely independent consumers** — a
+Flink job (Cassandra + MongoDB), a Kafka Connect worker (Iceberg), and a Kafka Streams topology
+(DynamoDB, in the `dynamo` module). They do not share offsets, transactions, or failure handling.
+This article is about what each one actually guarantees when something crashes, and why the four
+stores can legitimately disagree afterwards.
 
 If you only read one section, read §5.
 
-## 1. The two paths, side by side
+## 1. The three paths, side by side
 
-| | Flink path (`flink` module) | Kafka Connect path (`kafka-connect`) |
-|---|---|---|
-| Consumer group | `playground-flink-sink` | `connect-https-sessions-iceberg-sink` (managed by Connect) |
-| Offset storage | *none* — see §2 | `_connect-offsets` topic |
-| Restart behaviour | replays the **whole topic** from `earliest` | resumes from committed offsets |
-| Commit protocol | none — per-record writes | two-phase commit over a control topic |
-| Effective guarantee | **at-least-once at best**, no crash recovery | **exactly-once** into the Iceberg table |
-| Write visibility | immediate | batched, every `iceberg.control.commit.interval-ms` (10s here) |
+| | Flink path (`flink` module) | Kafka Connect path (`kafka-connect`) | Kafka Streams path (`dynamo` module) |
+|---|---|---|---|
+| Consumer group | `playground-flink-sink` | `connect-https-sessions-iceberg-sink` (managed by Connect) | `playground-dynamo-streams` |
+| Offset storage | *none* — see §2 | `_connect-offsets` topic | Kafka consumer-group offsets, committed on `commit.interval.ms` |
+| Restart behaviour | replays the **whole topic** from `earliest` | resumes from committed offsets | resumes from committed offsets |
+| Commit protocol | none — per-record writes | two-phase commit over a control topic | none — per-record writes, offset commit decoupled from the DynamoDB write |
+| Effective guarantee | **at-least-once at best**, no crash recovery | **exactly-once** into the Iceberg table | **at-least-once into DynamoDB** — Kafka-internal `exactly_once_v2` doesn't extend to the external write, see §10 |
+| Write visibility | immediate | batched, every `iceberg.control.commit.interval-ms` (10s here) | immediate |
 
-Neither path knows the other exists. There is no distributed transaction spanning Cassandra,
-MongoDB, and Iceberg — and there is no practical way to build one across these three engines.
-Accepting per-store guarantees and reconciling afterwards (see `docs/cross-store-consistency.md`)
-is the normal industry answer, not a shortcut taken here.
+None of the three paths know the others exist. There is no distributed transaction spanning
+Cassandra, MongoDB, Iceberg, and DynamoDB — and there is no practical way to build one across four
+engines this different. Accepting per-store guarantees and reconciling afterwards (see
+`docs/cross-store-consistency.md`) is the normal industry answer, not a shortcut taken here.
 
 ## 2. The Flink job has no checkpointing — what that actually means
 
@@ -251,3 +252,28 @@ env.enableCheckpointing(5000);   // 5s, at-least-once is the default alignment m
 
 Offsets start appearing for the group — and combined with `committedOffsets(...)` from §3, the
 restart replay disappears.
+
+## 10. The `dynamo` module: Kafka Streams' exactly-once doesn't cover external writes
+
+`HttpsSessionDynamoTopology.writeToBothTables` runs inside a `KStream.foreach`, calling the AWS
+SDK's `DynamoDbAsyncClient` synchronously (`.join()`) for each of two tables. Kafka Streams *does*
+support `processing.guarantee=exactly_once_v2`, which gives you atomic, exactly-once semantics for
+state stores and Kafka-to-Kafka writes — but that guarantee stops at Kafka's own boundary. A
+`.foreach()` side effect like a DynamoDB `UpdateItem`/`PutItem` call is invisible to that
+transactional machinery entirely. A crash between the DynamoDB write succeeding and the consumer
+offset committing is an ordinary at-least-once redelivery from DynamoDB's point of view — same
+record, processed again.
+
+This is *why* `https_session_aggregates`' `ADD`-based counters aren't idempotent
+(`docs/dynamodb-tutorial.md` §2): the topology has no way to detect "I already wrote this," because
+nothing about Kafka Streams' exactly-once story covers that write. Compare with the Iceberg path's
+real two-phase commit (§7) — closing this gap for DynamoDB would mean building the equivalent
+staged-write/commit protocol yourself, which is exactly the kind of thing Flink's
+`TwoPhaseCommittingSink` interface gives you for free (see `docs/stream-processing-comparison.md`
+§3) and Kafka Streams' plain DSL does not.
+
+**A second, unrelated failure mode surfaced while building this module**: Kafka Streams treats a
+missing source topic during rebalance as fatal (`MissingSourceTopicException`), and by default
+shuts the whole client down rather than retrying — see `docs/stream-processing-comparison.md` §4
+for the full trace and the practical workaround (make sure the topic exists before starting
+`./gradlew :dynamo:bootRun`).
