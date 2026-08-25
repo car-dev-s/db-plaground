@@ -1,4 +1,4 @@
-# db-playground
+  # db-playground
 
 A local, Docker-based playground for exploring a streaming data pipeline that fans one Kafka
 topic out into three very different storage engines — Apache Iceberg (via Kafka Connect),

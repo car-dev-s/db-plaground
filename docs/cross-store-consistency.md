@@ -239,3 +239,41 @@ express them — that is a large part of what the `cassandra` catalog is for her
 `castTimestamp`/`toTimestamp` SMT chain, and the second-precision Iceberg column it produces, exist
 solely because the type was not declared at the source. Schema-on-write costs a registry;
 schema-on-read costs a workaround in every consumer.
+
+## 8. BSON's self-describing cost vs. a known schema
+
+MongoDB's flexibility in §4 and §5 has a performance price that is worth naming explicitly, because
+it is the same root cause as the timestamp problem in §1: **no declared schema means type/shape
+decisions happen at read time instead of write time.**
+
+**Every document repeats its own field names.** Unlike Cassandra (schema declared once in
+`cassandra/init.cql`, each row stores only values) or Iceberg (schema in the table metadata, columns
+stored once), BSON stores `sourceIp`, `timestampIso`, etc. as literal bytes *inside every single
+document*. Across the collection that is pure repeated overhead — more bytes on disk, more bytes to
+read off disk, for the same information a fixed-schema store stores once.
+
+**Unindexed queries pay a parsing tax.** Cassandra and Iceberg both know a column's byte offset (or
+which file/column-chunk to read) from metadata alone. MongoDB has no such offset table — to find
+`sourceIp` in a document, the engine walks the BSON byte stream field by field. `createIndex` erases
+this difference for the indexed field (an index lookup is a B-tree, same as any other store), but a
+`find()` on an unindexed field means a full collection scan that re-parses every document's BSON
+structure, not just its bytes.
+
+**No write-time validation shifts the cost to every reader.** Without a `$jsonSchema` validator,
+MongoDB will happily accept a document where `timestampIso` is missing or is a number instead of a
+string. Cassandra's CQL schema and Iceberg's declared schema both reject that at write time. This
+project doesn't hit it because every write goes through the same Flink sink, but it is why the
+`LEFT JOIN ... WHERE c.source_ip IS NULL` pattern in §3 has to defensively handle absent fields —
+nothing upstream guarantees the field exists.
+
+**Where this project would actually feel it:** the reconciliation queries in §6 run through Trino
+against all three stores. The Cassandra and Iceberg legs benefit from connector-level pushdown using
+known column metadata; the MongoDB leg either uses the index on `sourceIp` (if queried) or falls back
+to a collection scan that decodes each document's self-describing structure. At 100 rows this is
+invisible. At production volume, an unindexed cross-store reconciliation query against MongoDB is
+the leg most likely to dominate the query's total latency.
+
+The tradeoff is real in both directions, not just a MongoDB weakness: the schema-on-write stores paid
+their cost earlier, in this project, as the SMT chain in §1 and the `init.cql` column declarations —
+work that had to happen before the first row was ever written. BSON deferred that cost to every query
+instead of paying it once at design time.
