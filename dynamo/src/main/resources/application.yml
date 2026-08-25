@@ -5,6 +5,8 @@ spring:
       application-id: playground-dynamo-streams
       properties:
         default.deserialization.exception.handler: org.apache.kafka.streams.errors.LogAndFailExceptionHandler
+    consumer:
+      auto-offset-reset: earliest
 
 playground:
   dynamo:
