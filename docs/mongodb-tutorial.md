@@ -35,6 +35,13 @@ serialized) preserves the original sub-millisecond precision as text. If you eve
 microsecond-level ordering guarantees, `timestampIso` is the field with more precision, at the
 cost of not being natively sortable/range-queryable the way `timestamp` is.
 
+Sharper than that, and worth flagging: `timestampIso` is not just *less convenient* to sort, it
+sorts **incorrectly**. `Instant.toString()` emits zero, three, six, or nine fractional digits,
+trimming trailing zero groups, so `...23.420Z` string-compares as *greater than* `...23.420492600Z`.
+Use `timestamp` for ordering and ranges, and `timestampIso` only for exact identity — it is the
+one field that survives every hop losslessly, which makes it the right cross-store join key.
+See `docs/cross-store-consistency.md` §2.
+
 ## 3. Gotchas
 
 **No schema enforcement means no schema *validation* by default.** A typo'd field name in a
@@ -43,6 +50,13 @@ creates a new field, and existing documents don't get it retroactively. Unlike I
 `iceberg.tables.evolve-schema-enabled` (an explicit, logged schema change), this happens with zero
 signal. MongoDB supports optional JSON Schema validators per collection if this ever becomes a
 real concern; this project doesn't use one, matching its playground scope.
+
+**The generated `_id` makes every replay a duplicate.** Because `insertOne` supplies no `_id`, the
+driver mints a fresh `ObjectId` per call — identity comes from the *write*, not from the data. The
+Flink job restarts from `earliest` on every run, so running it twice gives you two copies of every
+session, while Cassandra (whose key *is* data-derived) converges. This is the most visible
+inconsistency in the whole project; the deterministic-`_id` fix is in
+`docs/delivery-semantics.md` §5.
 
 **No indexes are created here beyond the default `_id` index.** Every query in this project's
 manual verification steps (`find()`, `countDocuments()`) does a full collection scan. Fine at

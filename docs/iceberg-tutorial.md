@@ -131,6 +131,14 @@ schema automatically when it sees a new field in incoming JSON — useful for it
 schema without manual DDL, but worth knowing it's an automatic, silent schema change in production
 terms — a typo'd field name in a producer becomes a permanent new column, not an error.
 
+Note also what schema *inference* costs you, separately from evolution. With
+`value.converter.schemas.enable: false`, the connector guesses each column's type from the raw JSON
+value's shape, which is why this project needs the `castTimestamp`/`toTimestamp` SMT chain
+(`DEPLOYMENT.md` §6) to stop `timestamp` from being inferred as `double`. The side effect is that
+the Iceberg table holds **whole-second** timestamps, while Cassandra and MongoDB hold milliseconds —
+Iceberg's own `timestamp` type is microsecond-precision, so this loss is entirely the workaround's,
+not the format's. `docs/cross-store-consistency.md` §1 traces it end to end.
+
 ## 6. Time travel and metadata introspection
 
 Every snapshot is independently queryable. From Trino:

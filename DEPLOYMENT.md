@@ -339,10 +339,11 @@ Jackson deserialization error.
 
 ## 7. Producing data
 
-This repo's Spring Boot `kafka` module has a `CommandLineRunner` gated behind the
-`load-https-sessions` Spring profile that publishes mock HTTPS session records to the
-`playground.https-sessions` topic (see `kafka/src/main/resources/application.yml` for
-the topic name and record count). Run it with that profile active to feed the pipeline.
+This repo's Spring Boot `kafka` module has a `CommandLineRunner`
+(`HttpsSessionLoadRunner`) that publishes mock HTTPS session records to the
+`playground.https-sessions` topic on every startup (see
+`kafka/src/main/resources/application.yml` for the topic name and record count). Run
+`./gradlew :kafka:bootRun` to feed the pipeline.
 
 ## 8. Querying with Trino
 
@@ -397,17 +398,19 @@ cassandra:
   image: cassandra:5
   ports: ["9042:9042"]
   volumes:
-    - ${MOUNT_ROOT}/cassandra:/var/lib/cassandra
+    - ${MOUNT_ROOT:?error}/cassandra:/var/lib/cassandra
 
 mongodb:
   image: mongo:7
   ports: ["27017:27017"]
   volumes:
-    - ${MOUNT_ROOT}/mongodb:/data/db
+    - ${MOUNT_ROOT:?error}/mongodb:/data/db
 ```
 
-`MOUNT_ROOT` is defined once in the repo-root `.env` file (`MOUNT_ROOT=D:/work/docker/mount`) and
-referenced by every bind-mounted service, including the pre-existing `kafka` and `minio` mounts.
+`MOUNT_ROOT` must be set in a repo-root `.env` file (e.g. `MOUNT_ROOT=D:/work/docker/mount`; not
+committed — see `.gitignore`) and is referenced by every bind-mounted service, including the
+pre-existing `kafka` and `minio` mounts. The `:?error` suffix makes `docker compose up` fail fast
+with a clear error instead of silently bind-mounting to a literal `./` path if `MOUNT_ROOT` is unset.
 
 Cassandra's keyspace/table are created by a one-shot `cassandra-init` container running
 `cassandra/init.cql` via `cqlsh` (same pattern as `minio-init`). MongoDB needs no init step — the
@@ -431,7 +434,7 @@ SELECT * FROM mongodb.playground.https_sessions LIMIT 10;
 2. `docker compose up -d` → `kafka-connect-init` creates the namespace and registers the connector automatically; `cassandra-init` creates the `playground` keyspace and `https_sessions` table
 3. `curl http://localhost:8083/connector-plugins | grep -i iceberg` → confirms plugin loaded
 4. `curl http://localhost:8083/connectors/https-sessions-iceberg-sink/status` → wait for `RUNNING` on connector *and* task
-5. Run the producer (`load-https-sessions` profile)
+5. Run the producer: `./gradlew :kafka:bootRun`
 6. `./gradlew :flink:bootRun` → starts the Cassandra + MongoDB sink job (runs locally, not containerized)
 7. `docker compose exec trino trino` → `SELECT count(*) FROM iceberg.playground.https_sessions;`,
    `SELECT count(*) FROM cassandra.playground.https_sessions;`,

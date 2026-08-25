@@ -185,4 +185,14 @@ connector JSON via `transforms`. This project's connector uses a two-step chain 
 infer as `double`" gotcha in `kafka-connect/README.md`. SMTs avoid needing a separate
 stream-processing job for simple record shaping, but they're limited to what the built-in transforms
 support: `TimestampConverter`'s `unix` format only accepts a `Long`, not a fractional `Double`, which
-is why a `Cast$Value` step (with precision loss) comes first here.
+is why a `Cast$Value` step (with precision loss) comes first here. That precision loss is not
+cosmetic — it leaves the Iceberg table with second-granularity timestamps while the other two stores
+hold milliseconds; `docs/cross-store-consistency.md` §1 traces the consequence.
+
+**This connector is the only exactly-once path in the project.** The Iceberg sink stages Parquet
+files without registering them, reports files *and* consumed offsets over the `control-iceberg`
+topic, and lets a coordinator commit both atomically into one Iceberg snapshot — a genuine
+two-phase commit, which is why offsets live in the table metadata rather than only in
+`_connect-offsets`. The `iceberg.control.commit.interval-ms: 10000` setting is the visible cost:
+writes are invisible to queries for up to 10 seconds. Contrast with the Flink path, which has no
+commit protocol at all — `docs/delivery-semantics.md` §7 puts the two side by side.

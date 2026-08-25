@@ -8,12 +8,12 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>log/kafka.log</file>
+        <file>log/flink.log</file>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>../log/kafka.log.%i</fileNamePattern>
+            <fileNamePattern>../log/flink.log.%i</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>4</maxIndex>
         </rollingPolicy>
@@ -27,5 +27,5 @@
         <appender-ref ref="FILE"/>
     </root>
 
-    <logger name="db.playground.kafka" level="DEBUG"/>
+    <logger name="db.playground.flink" level="DEBUG"/>
 </configuration>

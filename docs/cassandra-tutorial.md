@@ -77,7 +77,22 @@ up in normal use — only relevant if you start scripting per-row deletes.
 **`ALLOW FILTERING`.** Any query that doesn't fully specify the partition key (and, for range
 predicates, a prefix of the clustering key) gets rejected unless you add `ALLOW FILTERING` —
 which usually means "this will scan every partition." Treat it as a query-design smell, not a
-flag to reach for.
+flag to reach for. Note that Trino's `cassandra` connector does *not* reject these queries — it
+happily full-scans and filters in its own workers, so the guardrail disappears the moment you
+query through Trino. See `docs/query-federation.md` §3.
+
+**CQL `timestamp` is millisecond-precision, and it's half of the primary key here.** The sink
+binds a `java.time.Instant` (100ns ticks on the JDK) into a column that stores milliseconds, so
+the clustering key is a *truncated* value. Two distinct sessions from the same `source_ip` within
+the same millisecond collapse to the same primary key — and because every CQL `INSERT` is an
+upsert, the second silently overwrites the first, with no error and no duplicate-key exception.
+The `timestamp_iso` column is what makes this detectable after the fact. Full trace in
+`docs/cross-store-consistency.md` §§1–3.
+
+**CQL is not SQL, and aggregation is where that bites.** `count(DISTINCT source_ip)` is a syntax
+error, not a slow query. Any aggregate without a partition key returns an `Aggregation query used
+without partition key` warning while scanning the whole cluster. Reconciliation and exploratory
+aggregate queries belong in Trino, which can actually express them.
 
 ## 5. How `cqlsh` and the Trino `cassandra` catalog relate
 

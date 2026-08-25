@@ -205,3 +205,13 @@ ALTER TABLE iceberg.playground.https_sessions EXECUTE optimize;
 
 This compacts small files into larger ones. Run it periodically in any pipeline with frequent
 small commits, not just this playground.
+
+## 6. Next: what Trino is actually doing
+
+This article covers using Trino here. Two follow-ons go a level deeper:
+
+- `docs/query-federation.md` — which predicates each connector can push down (and the silent
+  full scans that happen when they can't), why the missing Cassandra/MongoDB statistics disable
+  the cost-based optimizer, and how to read `EXPLAIN` to tell the difference.
+- `docs/cross-store-consistency.md` — why joining the three catalogs on their native `timestamp`
+  columns returns nothing, and which field to join on instead.
