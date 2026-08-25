@@ -8,6 +8,7 @@ flink = "2.2.0"
 flinkConnectorKafka = "5.0.0-2.2"
 cassandraDriver = "4.17.0"
 mongodbDriver = "5.9.0"
+awssdk = "2.35.11"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -20,6 +21,8 @@ flink-connector-kafka = { module = "org.apache.flink:flink-connector-kafka", ver
 flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
 cassandra-driver-core = { module = "com.datastax.oss:java-driver-core", version.ref = "cassandraDriver" }
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodbDriver" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk" }
+awssdk-dynamodb = { module = "software.amazon.awssdk:dynamodb" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }

@@ -1,0 +1,19 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    streams:
+      application-id: playground-dynamo-streams
+      properties:
+        default.deserialization.exception.handler: org.apache.kafka.streams.errors.LogAndFailExceptionHandler
+
+playground:
+  dynamo:
+    https:
+      topic: playground.https-sessions
+      dynamo:
+        region: us-east-1
+        endpoint-override: http://localhost:8000
+        access-key-id: local
+        secret-access-key: local
+        aggregate-table: https_session_aggregates
+        event-table: https_session_events

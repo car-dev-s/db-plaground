@@ -10,3 +10,4 @@ dependencyResolutionManagement {
 
 include 'kafka'
 include 'flink'
+include 'dynamo'
