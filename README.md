@@ -40,6 +40,7 @@ Everything runs in Docker except the three Spring Boot / Flink / Kafka Streams G
 | Cassandra | `localhost:9042` | Wide-column store, direct Flink sink target |
 | MongoDB | `localhost:27017` | Document store, direct Flink sink target |
 | DynamoDB Local | `localhost:8000` | Key-value store, direct Kafka Streams (`dynamo`) sink target — not exposed to Trino |
+| DynamoDB Admin | http://localhost:8001 | Browser UI for DynamoDB Local's tables/items |
 | Trino | http://localhost:8082 | SQL across the `iceberg`, `cassandra`, and `mongodb` catalogs |
 | SQLPad | http://localhost:3000 | Browser SQL client pre-wired to Trino (`admin@playground.local` / `admin`) |
 

@@ -7,5 +7,8 @@ public class HttpsSessionDynamoWriteException extends RuntimeException {
                         + " (aggregateFailed=" + (aggregateFailure != null)
                         + ", eventFailed=" + (eventFailure != null) + ")",
                 aggregateFailure != null ? aggregateFailure : eventFailure);
+        if (aggregateFailure != null && eventFailure != null) {
+            addSuppressed(eventFailure);
+        }
     }
 }

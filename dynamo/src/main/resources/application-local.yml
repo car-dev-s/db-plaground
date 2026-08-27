@@ -1,0 +1,7 @@
+playground:
+  dynamo:
+    https:
+      dynamo:
+        endpoint-override: http://localhost:8000
+        access-key-id: local
+        secret-access-key: local

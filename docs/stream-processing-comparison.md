@@ -79,9 +79,11 @@ This is a sharp edge specific to Kafka Streams' topology-validation-on-rebalance
 `KafkaConsumer.subscribe()` would just keep polling and pick the topic up once it exists. The
 practical fix in this repo: make sure something has produced to `playground.https-sessions` (or
 otherwise create the topic) before starting `./gradlew :dynamo:bootRun` — see
-`docs/dynamodb-tutorial.md` §6 and `DEPLOYMENT.md` §10. In a real deployment, this is exactly the
-class of failure a `StreamsUncaughtExceptionHandler` set to `REPLACE_THREAD` (instead of the
-default) would need to handle, alongside topic-existence checks in deployment tooling.
+`docs/dynamodb-tutorial.md` §6 and `DEPLOYMENT.md` §10. This is exactly the class of failure
+`HttpsSessionDynamoConfig` guards against by registering a `StreamsUncaughtExceptionHandler` set to
+`REPLACE_THREAD` (instead of the default `SHUTDOWN_CLIENT`) — the stream thread restarts instead of
+killing the whole client, though topic-existence checks in deployment tooling are still the better
+fix for this specific gotcha.
 
 Flink and Spark don't have a direct equivalent — both are typically deployed with the topic
 already provisioned as part of the job's declared source configuration, and neither treats a

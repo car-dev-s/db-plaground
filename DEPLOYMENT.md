@@ -444,12 +444,16 @@ Each event triggers two independent DynamoDB writes:
 - `https_session_events` — `PutItem` whole-item write keyed by `sourceIp` +
   `timestampIso`, a raw per-event log.
 
-A failure writing to one table does not prevent the attempt on the other; if either
-fails after the AWS SDK's built-in retries are exhausted, the stream thread fails and
-Kafka Streams restarts it (no DLQ in this version — see `docs/delivery-semantics.md`
-§10 for the full design rationale, including the non-idempotency caveat on the
-aggregate counters under Kafka's at-least-once redelivery, and
-`docs/dynamodb-tutorial.md` for the data model in depth).
+Both writes are issued concurrently (`CompletableFuture`s started together, then
+joined) rather than sequentially, so a slow or failing write to one table doesn't
+delay the attempt on the other; if either fails after the AWS SDK's built-in retries
+are exhausted, the stream thread fails and Kafka Streams restarts it (no DLQ in this
+version — see `docs/delivery-semantics.md` §10 for the full design rationale,
+including the non-idempotency caveat on the aggregate counters under Kafka's
+at-least-once redelivery, and `docs/dynamodb-tutorial.md` for the data model in
+depth). Events with a missing/blank `sourceIp` or `timestampIso` are dropped before
+either write is attempted (logged as a warning) since both are required key
+attributes.
 
 ```yaml
 dynamodb-local:
@@ -464,6 +468,9 @@ Tables are created by a one-shot `dynamodb-local-init` container running `aws dy
 create-table` (same pattern as `cassandra-init`/`minio-init`) — see
 `docker-compose.yml` for the exact commands.
 
+A `dynamodb-admin` container (browser UI at http://localhost:8001) is also wired up
+against `dynamodb-local`, for inspecting tables/items without the AWS CLI.
+
 ### Gotcha: Kafka Streams shuts down entirely if the source topic doesn't exist yet
 
 Unlike a plain Kafka consumer, Kafka Streams treats a missing source topic during
@@ -476,6 +483,22 @@ starting `dynamo`.
 
 Run the module: `./gradlew :dynamo:bootRun` (runs locally, not containerized, same as
 `flink`). Verify data landed:
+
+### Local-only DynamoDB credentials live in the `local` Spring profile
+
+`application.yml` sets `spring.profiles.active: local` as its own default, so
+`./gradlew :dynamo:bootRun` picks up `application-local.yml` automatically — it
+supplies `endpoint-override: http://localhost:8000` and the placeholder
+`access-key-id`/`secret-access-key: local` (DynamoDB Local ignores real
+credentials, so these are not secrets). The default (non-local) profile has no
+endpoint override and no static credentials, so `DynamoDbAsyncClient` falls
+through to the ambient AWS credential chain (instance role, IRSA, SSO, etc.).
+
+Deploying against real DynamoDB: set `SPRING_PROFILES_ACTIVE` (env var beats the
+`application.yml` default) to anything that excludes `local`, e.g.
+`SPRING_PROFILES_ACTIVE=prod` or `SPRING_PROFILES_ACTIVE=` (empty). Leaving the
+`local` profile active against real AWS resources would use the placeholder
+`local`/`local` credentials instead of the ambient role.
 
 ```bash
 docker compose exec dynamodb-local-init aws dynamodb scan \

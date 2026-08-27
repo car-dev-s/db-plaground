@@ -10,14 +10,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BillingMode;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.net.URI;
 import java.time.Instant;
@@ -68,8 +61,8 @@ class DynamoSessionAggregateWriterIntegrationTest {
         HttpsSessionEvent first = sampleEvent("203.0.113.5", "example.com", "GET", 200, 100, 200, "2026-08-25T10:00:00Z");
         HttpsSessionEvent second = sampleEvent("203.0.113.5", "other.example.com", "POST", 201, 300, 400, "2026-08-25T10:05:00Z");
 
-        writer.update(first);
-        writer.update(second);
+        writer.update(first).join();
+        writer.update(second).join();
 
         Map<String, AttributeValue> item = client.getItem(GetItemRequest.builder()
                         .tableName(TABLE)
@@ -99,7 +92,7 @@ class DynamoSessionAggregateWriterIntegrationTest {
         event.setStatusCode(statusCode);
         event.setBytesSent(bytesSent);
         event.setBytesReceived(bytesReceived);
-        event.setDurationMillis(100);
+        event.setDurationMillis(100L);
         event.setTimestamp(Instant.parse(timestampIso));
         event.setTimestampIso(timestampIso);
         return event;

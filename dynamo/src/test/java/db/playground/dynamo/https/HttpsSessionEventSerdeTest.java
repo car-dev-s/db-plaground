@@ -18,9 +18,9 @@ class HttpsSessionEventSerdeTest {
         event.setDomain("example.com");
         event.setMethod("GET");
         event.setStatusCode(200);
-        event.setBytesSent(500);
-        event.setBytesReceived(1000);
-        event.setDurationMillis(100);
+        event.setBytesSent(500L);
+        event.setBytesReceived(1000L);
+        event.setDurationMillis(100L);
         Instant now = Instant.now();
         event.setTimestamp(now);
         event.setTimestampIso(now.toString());

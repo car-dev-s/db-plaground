@@ -5,15 +5,15 @@ import java.time.Instant;
 public class HttpsSessionEvent {
 
     private String sourceIp;
-    private int sourcePort;
+    private Integer sourcePort;
     private String destinationIp;
-    private int destinationPort;
+    private Integer destinationPort;
     private String domain;
     private String method;
-    private int statusCode;
-    private long bytesSent;
-    private long bytesReceived;
-    private long durationMillis;
+    private Integer statusCode;
+    private Long bytesSent;
+    private Long bytesReceived;
+    private Long durationMillis;
     private Instant timestamp;
     private String timestampIso;
 
@@ -28,11 +28,11 @@ public class HttpsSessionEvent {
         this.sourceIp = sourceIp;
     }
 
-    public int getSourcePort() {
+    public Integer getSourcePort() {
         return sourcePort;
     }
 
-    public void setSourcePort(int sourcePort) {
+    public void setSourcePort(Integer sourcePort) {
         this.sourcePort = sourcePort;
     }
 
@@ -44,11 +44,11 @@ public class HttpsSessionEvent {
         this.destinationIp = destinationIp;
     }
 
-    public int getDestinationPort() {
+    public Integer getDestinationPort() {
         return destinationPort;
     }
 
-    public void setDestinationPort(int destinationPort) {
+    public void setDestinationPort(Integer destinationPort) {
         this.destinationPort = destinationPort;
     }
 
@@ -68,35 +68,35 @@ public class HttpsSessionEvent {
         this.method = method;
     }
 
-    public int getStatusCode() {
+    public Integer getStatusCode() {
         return statusCode;
     }
 
-    public void setStatusCode(int statusCode) {
+    public void setStatusCode(Integer statusCode) {
         this.statusCode = statusCode;
     }
 
-    public long getBytesSent() {
+    public Long getBytesSent() {
         return bytesSent;
     }
 
-    public void setBytesSent(long bytesSent) {
+    public void setBytesSent(Long bytesSent) {
         this.bytesSent = bytesSent;
     }
 
-    public long getBytesReceived() {
+    public Long getBytesReceived() {
         return bytesReceived;
     }
 
-    public void setBytesReceived(long bytesReceived) {
+    public void setBytesReceived(Long bytesReceived) {
         this.bytesReceived = bytesReceived;
     }
 
-    public long getDurationMillis() {
+    public Long getDurationMillis() {
         return durationMillis;
     }
 
-    public void setDurationMillis(long durationMillis) {
+    public void setDurationMillis(Long durationMillis) {
         this.durationMillis = durationMillis;
     }
 

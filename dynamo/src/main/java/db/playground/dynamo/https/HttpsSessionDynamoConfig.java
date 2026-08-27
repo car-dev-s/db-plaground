@@ -1,7 +1,9 @@
 package db.playground.dynamo.https;
 
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -41,5 +43,12 @@ public class HttpsSessionDynamoConfig {
     @Bean
     public HttpsSessionDynamoTopology httpsSessionDynamoTopology(HttpsSessionAggregateWriter aggregateWriter, HttpsSessionEventWriter eventWriter) {
         return new HttpsSessionDynamoTopology(aggregateWriter, eventWriter);
+    }
+
+    @Bean
+    public StreamsBuilderFactoryBeanConfigurer streamsUncaughtExceptionHandlerConfigurer() {
+        StreamsUncaughtExceptionHandler handler = throwable ->
+                StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
+        return factoryBean -> factoryBean.setStreamsUncaughtExceptionHandler(handler);
     }
 }

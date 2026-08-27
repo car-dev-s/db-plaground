@@ -50,6 +50,8 @@ bin/
 docs/superpowers
 .env
 .env.local
+/docs/reviews/
 
 ### Logs ###
 log/
+

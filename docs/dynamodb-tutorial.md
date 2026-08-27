@@ -18,8 +18,12 @@ that module exists as a separate technology choice rather than a third Flink sin
 
 ```java
 void writeToBothTables(String key, HttpsSessionEvent event) {
-    RuntimeException aggregateFailure = attempt(() -> aggregateWriter.update(event), "aggregate", event.getSourceIp());
-    RuntimeException eventFailure = attempt(() -> eventWriter.put(event), "event", event.getSourceIp());
+    CompletableFuture<Void> aggregateWrite = start(() -> aggregateWriter.update(event));
+    CompletableFuture<Void> eventWrite = start(() -> eventWriter.put(event));
+
+    RuntimeException aggregateFailure = await(aggregateWrite, "aggregate", event.getSourceIp());
+    RuntimeException eventFailure = await(eventWrite, "event", event.getSourceIp());
+
     if (aggregateFailure != null || eventFailure != null) {
         throw new HttpsSessionDynamoWriteException(event.getSourceIp(), aggregateFailure, eventFailure);
     }
@@ -31,10 +35,16 @@ void writeToBothTables(String key, HttpsSessionEvent event) {
 | `https_session_aggregates` | `sourceIp` | *(none)* | `UpdateItem` | merge/upsert — running per-IP aggregate |
 | `https_session_events` | `sourceIp` | `timestampIso` | `PutItem` | whole-item replace — one row per event |
 
-Both writes are attempted independently — a failure in one never skips the other
-(`HttpsSessionDynamoTopology.attempt`, catches per-writer). This is deliberate: the two tables
-answer different questions ("what does source X look like right now" vs "show me every event"),
-and there's no reason a failure answering one should block answering the other.
+Both writes are started concurrently and attempted independently — a failure in one
+never skips the other, and neither has to wait on the other to start
+(`HttpsSessionDynamoTopology.start`/`await`, catches per-writer). This is deliberate:
+the two tables answer different questions ("what does source X look like right now"
+vs "show me every event"), and there's no reason a failure answering one should block
+answering the other.
+
+Events with a missing/blank `sourceIp` or `timestampIso` — both required key
+attributes — are filtered out before either write is attempted, and logged as a
+warning.
 
 ## 2. `https_session_aggregates`: atomic counters via `UpdateItem`
 

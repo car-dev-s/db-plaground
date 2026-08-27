@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,8 +15,14 @@ class HttpsSessionDynamoTopologyTest {
     @Test
     void attemptsBothWritersAndReturnsNormally_whenBothSucceed() {
         List<String> calls = new ArrayList<>();
-        HttpsSessionAggregateWriter aggregateWriter = event -> calls.add("aggregate");
-        HttpsSessionEventWriter eventWriter = event -> calls.add("event");
+        HttpsSessionAggregateWriter aggregateWriter = event -> {
+            calls.add("aggregate");
+            return CompletableFuture.completedFuture(null);
+        };
+        HttpsSessionEventWriter eventWriter = event -> {
+            calls.add("event");
+            return CompletableFuture.completedFuture(null);
+        };
         HttpsSessionDynamoTopology topology = new HttpsSessionDynamoTopology(aggregateWriter, eventWriter);
 
         topology.writeToBothTables("key", sampleEvent());
@@ -30,7 +37,10 @@ class HttpsSessionDynamoTopologyTest {
             calls.add("aggregate");
             throw new RuntimeException("aggregate boom");
         };
-        HttpsSessionEventWriter eventWriter = event -> calls.add("event");
+        HttpsSessionEventWriter eventWriter = event -> {
+            calls.add("event");
+            return CompletableFuture.completedFuture(null);
+        };
         HttpsSessionDynamoTopology topology = new HttpsSessionDynamoTopology(aggregateWriter, eventWriter);
 
         assertThatThrownBy(() -> topology.writeToBothTables("key", sampleEvent()))
@@ -41,7 +51,10 @@ class HttpsSessionDynamoTopologyTest {
     @Test
     void stillAttemptsAggregateWriter_whenEventWriterFails() {
         List<String> calls = new ArrayList<>();
-        HttpsSessionAggregateWriter aggregateWriter = event -> calls.add("aggregate");
+        HttpsSessionAggregateWriter aggregateWriter = event -> {
+            calls.add("aggregate");
+            return CompletableFuture.completedFuture(null);
+        };
         HttpsSessionEventWriter eventWriter = event -> {
             calls.add("event");
             throw new RuntimeException("event boom");
@@ -62,9 +75,9 @@ class HttpsSessionDynamoTopologyTest {
         event.setDomain("example.com");
         event.setMethod("GET");
         event.setStatusCode(200);
-        event.setBytesSent(500);
-        event.setBytesReceived(1000);
-        event.setDurationMillis(100);
+        event.setBytesSent(500L);
+        event.setBytesReceived(1000L);
+        event.setDurationMillis(100L);
         Instant now = Instant.now();
         event.setTimestamp(now);
         event.setTimestampIso(now.toString());

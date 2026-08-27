@@ -10,14 +10,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BillingMode;
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.net.URI;
 import java.time.Instant;
@@ -75,13 +68,13 @@ class DynamoSessionEventWriterIntegrationTest {
         event.setDomain("example.com");
         event.setMethod("GET");
         event.setStatusCode(200);
-        event.setBytesSent(500);
-        event.setBytesReceived(1000);
-        event.setDurationMillis(150);
+        event.setBytesSent(500L);
+        event.setBytesReceived(1000L);
+        event.setDurationMillis(150L);
         event.setTimestamp(Instant.parse("2026-08-25T10:00:00Z"));
         event.setTimestampIso("2026-08-25T10:00:00Z");
 
-        writer.put(event);
+        writer.put(event).join();
 
         Map<String, AttributeValue> item = client.getItem(GetItemRequest.builder()
                         .tableName(TABLE)

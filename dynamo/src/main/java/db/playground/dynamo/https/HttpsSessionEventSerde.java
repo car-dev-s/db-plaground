@@ -24,6 +24,9 @@ public class HttpsSessionEventSerde implements Serde<HttpsSessionEvent> {
     @Override
     public Deserializer<HttpsSessionEvent> deserializer() {
         return (topic, bytes) -> {
+            if (bytes == null) {
+                return null;
+            }
             try {
                 return MAPPER.readValue(bytes, HttpsSessionEvent.class);
             } catch (Exception e) {
